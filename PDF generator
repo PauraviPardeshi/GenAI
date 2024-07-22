@@ -1,0 +1,59 @@
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+
+# Define the content for the search strategy
+search_strategy_content = [
+    ("Suchstrategie", "Technologiemannamen:", "Co-bots"),
+    ("Suchwörter/Beschreibung:", "Co-bots, auch bekannt als kollaborative Roboter, sind spezialisierte Roboter, die darauf ausgelegt sind, sicher und effizient mit Menschen zusammenzuarbeiten."),
+    ("Wertschöpfungskette / Technologieeinsatz:", "Co-bots spielen eine wesentliche Rolle in mehreren Bereichen der Wertschöpfungskette, insbesondere in der Produktion und Logistik."),
+    ("Anwendungsfälle:", ["Montage und andere Produktionskomponenten in der Fertigung.", "Unterstützung bei der Kommissionierung und Verpackung in Lagerhäusern.", "Durchführung von Qualitätskontrollen in der Automobilproduktion.", "Einsatz in der medizinischen Rehabilitation zur Unterstützung von Therapeuten."]),
+    ("Reifegrad (TRL):", "Co-bots befinden sich auf dem Technology Readiness Level (TRL) 8, da sie bereits in verschiedenen industriellen Anwendungen weit verbreitet sind und ihren Nutzen bewiesen haben."),
+    ("Potenziale:", ["Effizienzsteigerung in der Produktion durch Automatisierung repetitiver Aufgaben.", "Reduzierung von Arbeitsunfällen durch Übernahme gefährlicher Tätigkeiten.", "Flexibilität und einfache Anpassung an verschiedene Aufgaben und Branchen.", "Kostensenkung durch erhöhte Produktivität und geringere Fehlerquoten."]),
+    ("Herausforderungen:", ["Hohe Anschaffungskosten und Integrationsaufwand.", "Notwendigkeit der Schulung von Mitarbeitern im Umgang mit Co-bots.", "Technische Herausforderungen bei der Interaktion mit komplexen Umgebungen.", "Regulatorische Anforderungen und Sicherheitsstandards."]),
+    ("Keyfacts:", ["Der Markt für Co-bots wird auf etwa 1,2 Milliarden USD geschätzt.", "Wachstumsrate des Marktes liegt bei ca. 50% jährlich.", "Hauptindustrien: Automobil, Elektronik- und Logistikindustrie.", "Durchschnittliche Lebensdauer eines Co-bots beträgt etwa 5-7 Jahre."]),
+    ("Keyplayer:", ["Universal Robots", "KUKA AG", "ABB Ltd.", "Fanuc Corporation", "Rethink Robotics Inc.", "Yaskawa Electric Corporation", "Bosch Rexroth Inc."]),
+    ("Wichtige Institute:", ["Fraunhofer-Institut für Produktionstechnik und Automatisierung (IPA)", "Computer Science and Artificial Intelligence Laboratory (CSAIL)"]),
+]
+
+# Define the content for the output profile
+output_profile_content = [
+    ("Profile", "Co-bots"),
+    ("Kurzbeschreibung:", "Co-bots, auch bekannt als kollaborative Roboter, sind spezialisierte Roboter, die darauf ausgelegt sind, sicher und effizient mit Menschen zusammenzuarbeiten."),
+    ("Wertschöpfungskette / Technologieeinsatz:", "Co-bots spielen eine wesentliche Rolle in mehreren Bereichen der Wertschöpfungskette, insbesondere in der Produktion und Logistik. In der Produktion unterstützen sie bei der Montage und anderen Produktionskomponenten in der Fertigung."),
+    ("Anwendungsfälle:", ["Montage und andere Produktionskomponenten in der Fertigung.", "Unterstützung bei der Kommissionierung und Verpackung in Lagerhäusern.", "Durchführung von Qualitätskontrollen in der Automobilproduktion.", "Einsatz in der medizinischen Rehabilitation zur Unterstützung von Therapeuten."]),
+    ("Reifegrad (TRL):", "Co-bots befinden sich auf dem Technology Readiness Level (TRL) 8, da sie bereits in verschiedenen industriellen Anwendungen weit verbreitet sind und ihren Nutzen bewiesen haben."),
+    ("Potenziale:", ["Effizienzsteigerung in der Produktion durch Automatisierung repetitiver Aufgaben.", "Reduzierung von Arbeitsunfällen durch Übernahme gefährlicher Tätigkeiten.", "Flexibilität und einfache Anpassung an verschiedene Aufgaben und Branchen.", "Kostensenkung durch erhöhte Produktivität und geringere Fehlerquoten."]),
+    ("Herausforderungen:", ["Hohe Anschaffungskosten und Integrationsaufwand.", "Notwendigkeit der Schulung von Mitarbeitern im Umgang mit Co-bots.", "Technische Herausforderungen bei der Interaktion mit komplexen Umgebungen.", "Regulatorische Anforderungen und Sicherheitsstandards."]),
+    ("Keyfacts:", ["Der Markt für Co-bots wird auf etwa 1,2 Milliarden USD geschätzt.", "Wachstumsrate des Marktes liegt bei ca. 50% jährlich.", "Hauptindustrien: Automobil, Elektronik- und Logistikindustrie.", "Durchschnittliche Lebensdauer eines Co-bots beträgt etwa 5-7 Jahre."]),
+    ("Keyplayer:", ["Universal Robots", "KUKA AG", "ABB Ltd.", "Fanuc Corporation", "Rethink Robotics Inc.", "Yaskawa Electric Corporation", "Bosch Rexroth Inc."]),
+    ("Wichtige Institute:", ["Fraunhofer-Institut für Produktionstechnik und Automatisierung (IPA)", "Computer Science and Artificial Intelligence Laboratory (CSAIL)"]),
+]
+
+def generate_pdf(content, filename):
+    doc = SimpleDocTemplate(filename, pagesize=A4)
+    styles = getSampleStyleSheet()
+    story = []
+
+    for item in content:
+        if isinstance(item[1], str):
+            story.append(Paragraph(f"<b>{item[0]}</b>", styles['Heading1']))
+            story.append(Paragraph(item[1], styles['Normal']))
+        elif isinstance(item[1], list):
+            story.append(Paragraph(f"<b>{item[0]}</b>", styles['Heading1']))
+            for subitem in item[1]:
+                story.append(Paragraph(f"• {subitem}", styles['Normal']))
+        story.append(Spacer(1, 12))
+
+    doc.build(story)
+
+# Generate PDFs
+search_strategy_output_path = "/mnt/data/Search_Strategy.pdf"
+output_profile_output_path = "/mnt/data/Output_Profile.pdf"
+
+generate_pdf(search_strategy_content, search_strategy_output_path)
+generate_pdf(output_profile_content, output_profile_output_path)
+
+search_strategy_output_path, output_profile_output_path
