@@ -1,0 +1,55 @@
+from llama_index import VectorStoreIndex
+from llama_index.storage.storage_context import StorageContext
+from llama_index.vector_stores.chroma import ChromaVectorStore
+import chromadb
+import os
+import shutil
+
+# Paths
+input_directory = 'path/to/input/folder'
+processed_directory = 'path/to/processed/folder'
+processed_log = 'path/to/processed_log.txt'
+
+# Create or connect to the persistent ChromaDB client and collection
+chroma_client = chromadb.PersistentClient(path="path/to/chromadb/persistent/db")  # Set path to persistent storage
+chroma_collection = chroma_client.create_collection("your_collection_name")  # Use the same collection name for persistence
+
+# Set up ChromaVectorStore
+vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+storage_context = StorageContext.from_defaults(vector_store=vector_store)
+
+# Load the processed files log
+if os.path.exists(processed_log):
+    with open(processed_log, 'r') as file:
+        processed_files = set(file.read().splitlines())
+else:
+    processed_files = set()
+
+# Process and index only new documents
+new_documents = []
+for file_name in os.listdir(input_directory):
+    file_path = os.path.join(input_directory, file_name)
+    
+    if file_name not in processed_files:
+        # Load the document (implement your document loading logic here)
+        document = load_document(file_path)  # Replace with your actual document loading logic
+        new_documents.append(document)
+        
+        # Move the processed file to the processed directory
+        shutil.move(file_path, os.path.join(processed_directory, file_name))
+        
+        # Log the processed file
+        with open(processed_log, 'a') as file:
+            file.write(f"{file_name}\n")
+
+# If there are new documents, add them to the index
+if new_documents:
+    index = VectorStoreIndex.from_documents(
+        new_documents, storage_context=storage_context, embed_model=embed_model  # Ensure embed_model is defined
+    )
+    # Optionally, save the updated index or continue to work with it in your pipeline
+else:
+    # Load the existing index if no new documents
+    index = load_index_from_storage(storage_context)
+
+print("Indexing complete. New documents have been added to the persistent vector store.")
