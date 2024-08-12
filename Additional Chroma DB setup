@@ -1,0 +1,78 @@
+import hashlib
+import os
+import shutil
+from llama_index import VectorStoreIndex
+from llama_index.storage.storage_context import StorageContext
+from llama_index.vector_stores.chroma import ChromaVectorStore
+import chromadb
+
+# Paths
+input_directory = 'path/to/input/folder'
+processed_directory = 'path/to/processed/folder'
+processed_log = 'path/to/processed_log.txt'
+error_log_path = 'path/to/error_log.txt'  # Path for error logging
+
+# Function to calculate file hash
+def calculate_file_hash(file_path):
+    """Calculate the hash of a file's content."""
+    hasher = hashlib.sha256()
+    with open(file_path, 'rb') as f:
+        buf = f.read()
+        hasher.update(buf)
+    return hasher.hexdigest()
+
+# Load the processed files log (with hashes)
+processed_files = {}
+if os.path.exists(processed_log):
+    with open(processed_log, 'r') as file:
+        for line in file:
+            file_name, file_hash = line.strip().split(',')
+            processed_files[file_name] = file_hash
+
+# Create or connect to the persistent ChromaDB client and collection
+chroma_client = chromadb.PersistentClient(path="path/to/chromadb/persistent/db")  # Set path to persistent storage
+chroma_collection = chroma_client.create_collection("your_collection_name")  # Use the same collection name for persistence
+
+# Set up ChromaVectorStore
+vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+storage_context = StorageContext.from_defaults(vector_store=vector_store)
+
+# Process new or updated files
+new_documents = []
+for file_name in os.listdir(input_directory):
+    file_path = os.path.join(input_directory, file_name)
+    
+    try:
+        current_hash = calculate_file_hash(file_path)
+        
+        if file_name not in processed_files or processed_files[file_name] != current_hash:
+            # Load the document (implement your document loading logic here)
+            document = load_document(file_path)  # Replace with your actual document loading logic
+            new_documents.append(document)
+            
+            # Update the log with the new hash
+            processed_files[file_name] = current_hash
+            with open(processed_log, 'w') as file:
+                for name, file_hash in processed_files.items():
+                    file.write(f"{name},{file_hash}\n")
+            
+            # Move file to processed directory if needed
+            shutil.move(file_path, os.path.join(processed_directory, file_name))
+    
+    except Exception as e:
+        # Handle and log any errors
+        print(f"An error occurred while processing {file_name}: {e}")
+        with open(error_log_path, 'a') as error_log:
+            error_log.write(f"Error processing {file_name}: {e}\n")
+
+# If there are new documents, add them to the index
+if new_documents:
+    index = VectorStoreIndex.from_documents(
+        new_documents, storage_context=storage_context, embed_model=embed_model  # Ensure embed_model is defined
+    )
+    # Optionally, save the updated index or continue to work with it in your pipeline
+else:
+    # Load the existing index if no new documents
+    index = load_index_from_storage(storage_context)
+
+print("Indexing complete. New documents have been added to the persistent vector store.")
