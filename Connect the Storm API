@@ -1,0 +1,66 @@
+import requests
+import os
+from datetime import datetime
+from llama_index import VectorStoreIndex
+
+# Define your Storm API key and other settings
+api_key = "YOUR_STORM_API_KEY"
+output_dir = "path/to/your/variable/directory"
+
+# Function to send request to Storm API
+def query_storm_api(search_term, search_context, output_format='txt', output_dir=output_dir):
+    url = "https://storm.genie.stanford.edu/api/v1/query"
+
+    # Payload with search term and context
+    payload = {
+        "search_term": search_term,
+        "context": search_context
+    }
+
+    # Headers with API key
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+
+    # Send request to API
+    response = requests.post(url, json=payload, headers=headers)
+
+    # Handle response
+    if response.status_code == 200:
+        result = response.json()
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # Save the content based on format
+        if output_format in ['txt', 'csv']:
+            output_file = os.path.join(output_dir, f"storm_output_{timestamp}.{output_format}")
+            with open(output_file, 'w', encoding='utf-8') as file:
+                file.write(result['content'])
+
+            # Replace numbers with sources if needed
+            if 'sources' in result:
+                for index, source in result['sources'].items():
+                    result['content'] = result['content'].replace(f"[{index}]", f"[{source}]")
+                with open(output_file, 'w', encoding='utf-8') as file:
+                    file.write(result['content'])
+
+            print(f"Output saved as {output_file}")
+
+        elif output_format == 'pdf':
+            output_file = os.path.join(output_dir, f"storm_output_{timestamp}.pdf")
+            pdf_content = result['pdf_content']
+            with open(output_file, 'wb') as file:
+                file.write(pdf_content.encode('latin-1'))
+
+            print(f"Output saved as {output_file}")
+
+    else:
+        print(f"Error: {response.status_code}, {response.text}")
+
+# Example usage
+search_term = "Artificial Intelligence"
+search_context = "Future trends and applications in healthcare"
+output_format = "txt"  # Choose between 'txt', 'csv', or 'pdf'
+
+# Call function to query Storm API
+query_storm_api(search_term, search_context, output_format=output_format)
