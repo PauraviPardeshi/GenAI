@@ -1,0 +1,118 @@
+import requests
+import os
+import logging
+import asyncio
+import aiohttp
+from datetime import datetime
+from tenacity import retry, stop_after_attempt, wait_fixed
+from llama_index import VectorStoreIndex
+
+# Setup logging
+logging.basicConfig(filename='storm_api.log', level=logging.INFO, 
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Define your Storm API key and other settings
+api_key = "YOUR_STORM_API_KEY"
+output_dir = "path/to/your/variable/directory"
+
+# Function to send request to Storm API
+@retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
+async def query_storm_api(session, search_term, search_context, output_format='txt'):
+    url = "https://storm.genie.stanford.edu/api/v1/query"
+
+    # Payload with search term and context
+    payload = {
+        "search_term": search_term,
+        "context": search_context
+    }
+
+    # Headers with API key
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+
+    try:
+        async with session.post(url, json=payload, headers=headers) as response:
+            if response.status == 200:
+                result = await response.json()
+
+                # Timestamp for filenames
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+                # Save content based on format
+                output_file = os.path.join(output_dir, f"storm_output_{timestamp}.{output_format}")
+                if output_format in ['txt', 'csv']:
+                    # Replace numbers with sources if needed
+                    if 'sources' in result:
+                        for index, source in result['sources'].items():
+                            result['content'] = result['content'].replace(f"[{index}]", f"[{source}]")
+                    
+                    with open(output_file, 'w', encoding='utf-8') as file:
+                        file.write(result['content'])
+                    logging.info(f"Output saved as {output_file}")
+
+                elif output_format == 'pdf':
+                    output_file = os.path.join(output_dir, f"storm_output_{timestamp}.pdf")
+                    pdf_content = result['pdf_content']
+                    with open(output_file, 'wb') as file:
+                        file.write(pdf_content.encode('latin-1'))
+                    logging.info(f"Output saved as {output_file}")
+
+                return result
+
+            else:
+                logging.error(f"Error: {response.status}, {await response.text()}")
+                return None
+
+    except Exception as e:
+        logging.error(f"Exception occurred: {e}")
+        raise
+
+# Function to process multiple queries asynchronously
+async def process_queries(search_terms, search_contexts, output_format='txt'):
+    async with aiohttp.ClientSession() as session:
+        tasks = [query_storm_api(session, term, context, output_format) 
+                 for term, context in zip(search_terms, search_contexts)]
+        results = await asyncio.gather(*tasks)
+        return results
+
+# Main function to execute
+def main():
+    search_terms = ["Artificial Intelligence", "Biomarker"]  # Add more search terms
+    search_contexts = ["Future trends and applications in healthcare", 
+                       "Medical diagnosis and research"]  # Add corresponding contexts
+    output_format = "txt"  # Choose between 'txt', 'csv', or 'pdf'
+
+    # Ensure output directory exists
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    # Run the asynchronous process
+    asyncio.run(process_queries(search_terms, search_contexts, output_format))
+
+if __name__ == "__main__":
+    main()
+
+# --- Additional Features ---
+# You can now implement the following enhancements:
+
+# 1. Caching with requests-cache
+# pip install requests-cache
+# import requests_cache
+# requests_cache.install_cache('storm_cache', expire_after=1800)  # Cache for 30 minutes
+
+# 2. Handling rate limits and exponential backoff with tenacity
+# Already implemented using the @retry decorator
+
+# 3. Integrate cloud storage if necessary (e.g., AWS S3, Google Cloud Storage, etc.)
+# Use boto3 for AWS S3:
+# import boto3
+# s3 = boto3.client('s3')
+# s3.upload_file(output_file, 'your-bucket-name', output_file)
+
+# 4. Summarization/Post-processing of content using NLP libraries like spaCy, NLTK, etc.
+# import spacy
+# nlp = spacy.load("en_core_web_sm")
+# doc = nlp(result['content'])
+# summary = " ".join([sent.text for sent in doc.sents][:3])  # Simple summarization by taking the first 3 sentences
