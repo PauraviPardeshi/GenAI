@@ -1,66 +1,75 @@
-import requests
 import os
+import requests
 from datetime import datetime
-from llama_index import VectorStoreIndex
 
-# Define your Storm API key and other settings
-api_key = "YOUR_STORM_API_KEY"
-output_dir = "path/to/your/variable/directory"
+# Define your Storm API key and output directory
+api_key = "YOUR_STORM_API_KEY"  # Replace with your actual Storm API key
+output_dir = "path/to/your/variable/directory"  # Replace with your desired output directory
 
-# Function to send request to Storm API
+# Function to send a request to the Storm API and save the output
 def query_storm_api(search_term, search_context, output_format='txt', output_dir=output_dir):
-    url = "https://storm.genie.stanford.edu/api/v1/query"
+    # Storm API endpoint
+    url = "https://storm.genie.stanford.edu/api/v1/query"  # Replace with your Storm API URL if necessary
 
-    # Payload with search term and context
+    # Prepare the payload with search term and context
     payload = {
         "search_term": search_term,
         "context": search_context
     }
 
-    # Headers with API key
+    # Prepare headers with the API key
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
 
-    # Send request to API
+    # Send the request to the API
     response = requests.post(url, json=payload, headers=headers)
 
-    # Handle response
+    # Handle the response
     if response.status_code == 200:
         result = response.json()
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        # Save the content based on format
-        if output_format in ['txt', 'csv']:
-            output_file = os.path.join(output_dir, f"storm_output_{timestamp}.{output_format}")
-            with open(output_file, 'w', encoding='utf-8') as file:
-                file.write(result['content'])
+        # Ensure the output directory exists
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
 
-            # Replace numbers with sources if needed
+        # Generate a timestamp for the output file name
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_file = os.path.join(output_dir, f"storm_output_{timestamp}.{output_format}")
+
+        # If the output format is TXT or CSV
+        if output_format in ['txt', 'csv']:
+            # Replace numbers with actual sources in the content if sources are provided
             if 'sources' in result:
                 for index, source in result['sources'].items():
                     result['content'] = result['content'].replace(f"[{index}]", f"[{source}]")
-                with open(output_file, 'w', encoding='utf-8') as file:
-                    file.write(result['content'])
+
+            # Save the content to a file
+            with open(output_file, 'w', encoding='utf-8') as file:
+                file.write(result['content'])
 
             print(f"Output saved as {output_file}")
 
+        # If the output format is PDF
         elif output_format == 'pdf':
             output_file = os.path.join(output_dir, f"storm_output_{timestamp}.pdf")
             pdf_content = result['pdf_content']
+
+            # Save the PDF content to a file
             with open(output_file, 'wb') as file:
                 file.write(pdf_content.encode('latin-1'))
 
             print(f"Output saved as {output_file}")
 
     else:
+        # Handle errors
         print(f"Error: {response.status_code}, {response.text}")
 
-# Example usage
+# Example usage of the function
 search_term = "Artificial Intelligence"
 search_context = "Future trends and applications in healthcare"
-output_format = "txt"  # Choose between 'txt', 'csv', or 'pdf'
+output_format = "txt"  # You can choose 'txt', 'csv', or 'pdf' based on your needs
 
-# Call function to query Storm API
+# Call the function to query the Storm API and save the output
 query_storm_api(search_term, search_context, output_format=output_format)
